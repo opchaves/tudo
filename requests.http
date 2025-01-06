@@ -1,0 +1,38 @@
+# Sign Up
+http POST http://localhost:8080/users/signup \
+    name="John Doe" \
+    email="john.doe@example.com" \
+    password="password123"
+
+# Login
+http POST http://localhost:8080/users/login \
+    email="john.doe@example.com" \
+    password="password123"
+
+# Get JWT Token from Login Response
+# After logging in, extract the token from the response and set it as an environment variable
+# Example: export TOKEN=<your_token_here>
+
+# Create Note
+http POST http://localhost:8080/notes \
+    Authorization:"Bearer $TOKEN" \
+    title="First Note" \
+    content="This is the content of the first note."
+
+# Get All Notes
+http GET http://localhost:8080/notes \
+    Authorization:"Bearer $TOKEN"
+
+# Get Note by ID
+http GET http://localhost:8080/notes/1 \
+    Authorization:"Bearer $TOKEN"
+
+# Update Note by ID
+http PUT http://localhost:8080/notes/1 \
+    Authorization:"Bearer $TOKEN" \
+    title="Updated Note" \
+    content="This is the updated content of the note."
+
+# Delete Note by ID
+http DELETE http://localhost:8080/notes/1 \
+    Authorization:"Bearer $TOKEN"

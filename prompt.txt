@@ -1,0 +1,377 @@
+a rest api with chi v5 and pgx v5. have a .env file with DATABASE_URL connection and the main.go file, before starting the server should connect to postgres using a pool. I need to run migrations with goose to create two tables. one table for users that should have auto increment id, name, email and password. the other table is for notes and it should have title, content, and other fields that are relevant. then go on and write the crud for user where people can sign up and login via rest api. also write the crud for notes.
+
+## Copilot ───
+
+Sure, let's break this down step by step.
+
+### Step 1: Setup Project Structure
+Create the following structure for your project:
+```
+myapp/
+├── .env
+├── docker-compose.yml
+├── go.mod
+├── go.sum
+├── main.go
+├── migrations/
+│   ├── 00001_create_users_table.sql
+│   └── 00002_create_notes_table.sql
+└── internal/
+    ├── db/
+    │   └── db.go
+    ├── handlers/
+    │   ├── user.go
+    │   └── note.go
+    └── models/
+        ├── user.go
+        └── note.go
+```
+
+### Step 2: Create `.env` File
+Create a `.env` file with the following content:
+```
+DATABASE_URL=postgres://user:password@localhost:5432/mydb?sslmode=disable
+```
+
+### Step 3: Create `docker-compose.yml`
+Create a `docker-compose.yml` file to set up PostgreSQL:
+```yaml
+version: '3.8'
+
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+volumes:
+  pgdata:
+```
+
+### Step 4: Initialize Go Modules
+Run the following commands to initialize your Go modules and install dependencies:
+```sh
+go mod init myapp
+go get github.com/go-chi/chi/v5
+go get github.com/jackc/pgx/v5
+go get github.com/joho/godotenv
+go get github.com/pressly/goose/v3
+```
+
+### Step 5: Create Migration Files
+Create migration files in the `migrations` directory.
+
+`00001_create_users_table.sql`:
+```sql
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    password TEXT NOT NULL
+);
+```
+
+`00002_create_notes_table.sql`:
+```sql
+CREATE TABLE notes (
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Step 6: Create `main.go`
+Create the `main.go` file to set up the server and database connection:
+```go
+package main
+
+import (
+    "log"
+    "net/http"
+    "os"
+
+    "github.com/go-chi/chi/v5"
+    "github.com/joho/godotenv"
+    "github.com/myapp/internal/db"
+    "github.com/myapp/internal/handlers"
+)
+
+func main() {
+    err := godotenv.Load()
+    if err != nil {
+        log.Fatal("Error loading .env file")
+    }
+
+    databaseURL := os.Getenv("DATABASE_URL")
+    pool, err := db.Connect(databaseURL)
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer pool.Close()
+
+    r := chi.NewRouter()
+
+    r.Route("/users", func(r chi.Router) {
+        r.Post("/signup", handlers.SignUp(pool))
+        r.Post("/login", handlers.Login(pool))
+    })
+
+    r.Route("/notes", func(r chi.Router) {
+        r.Get("/", handlers.GetNotes(pool))
+        r.Post("/", handlers.CreateNote(pool))
+        r.Get("/{id}", handlers.GetNoteByID(pool))
+        r.Put("/{id}", handlers.UpdateNoteByID(pool))
+        r.Delete("/{id}", handlers.DeleteNoteByID(pool))
+    })
+
+    log.Println("Starting server on :8080")
+    http.ListenAndServe(":8080", r)
+}
+```
+
+### Step 7: Create Database Connection
+Create `internal/db/db.go`:
+```go
+package db
+
+import (
+    "context"
+    "github.com/jackc/pgx/v5/pgxpool"
+)
+
+func Connect(databaseURL string) (*pgxpool.Pool, error) {
+    pool, err := pgxpool.New(context.Background(), databaseURL)
+    if err != nil {
+        return nil, err
+    }
+    return pool, nil
+}
+```
+
+### Step 8: Create Models
+Create `internal/models/user.go`:
+```go
+package models
+
+type User struct {
+    ID       int    `json:"id"`
+    Name     string `json:"name"`
+    Email    string `json:"email"`
+    Password string `json:"password"`
+}
+```
+
+Create `internal/models/note.go`:
+```go
+package models
+
+import "time"
+
+type Note struct {
+    ID        int       `json:"id"`
+    UserID    int       `json:"user_id"`
+    Title     string    `json:"title"`
+    Content   string    `json:"content"`
+    CreatedAt time.Time `json:"created_at"`
+}
+```
+
+### Step 9: Create Handlers
+Create `internal/handlers/user.go`:
+```go
+package handlers
+
+import (
+    "context"
+    "encoding/json"
+    "net/http"
+
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/myapp/internal/models"
+)
+
+func SignUp(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var user models.User
+        if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        _, err := pool.Exec(context.Background(), "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)", user.Name, user.Email, user.Password)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusCreated)
+    }
+}
+
+func Login(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var user models.User
+        if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        var dbUser models.User
+        err := pool.QueryRow(context.Background(), "SELECT id, name, email, password FROM users WHERE email=$1", user.Email).Scan(&dbUser.ID, &dbUser.Name, &dbUser.Email, &dbUser.Password)
+        if err != nil {
+            http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+            return
+        }
+
+        if user.Password != dbUser.Password {
+            http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+            return
+        }
+
+        json.NewEncoder(w).Encode(dbUser)
+    }
+}
+```
+
+Create `internal/handlers/note.go`:
+```go
+package handlers
+
+import (
+    "context"
+    "encoding/json"
+    "net/http"
+    "strconv"
+
+    "github.com/go-chi/chi/v5"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/myapp/internal/models"
+)
+
+func GetNotes(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        rows, err := pool.Query(context.Background(), "SELECT id, user_id, title, content, created_at FROM notes")
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+        defer rows.Close()
+
+        var notes []models.Note
+        for rows.Next() {
+            var note models.Note
+            if err := rows.Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt); err != nil {
+                http.Error(w, err.Error(), http.StatusInternalServerError)
+                return
+            }
+            notes = append(notes, note)
+        }
+
+        json.NewEncoder(w).Encode(notes)
+    }
+}
+
+func CreateNote(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        var note models.Note
+        if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        _, err := pool.Exec(context.Background(), "INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3)", note.UserID, note.Title, note.Content)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusCreated)
+    }
+}
+
+func GetNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        id := chi.URLParam(r, "id")
+        noteID, err := strconv.Atoi(id)
+        if err != nil {
+            http.Error(w, "Invalid note ID", http.StatusBadRequest)
+            return
+        }
+
+        var note models.Note
+        err = pool.QueryRow(context.Background(), "SELECT id, user_id, title, content, created_at FROM notes WHERE id=$1", noteID).Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt)
+        if err != nil {
+            http.Error(w, "Note not found", http.StatusNotFound)
+            return
+        }
+
+        json.NewEncoder(w).Encode(note)
+    }
+}
+
+func UpdateNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        id := chi.URLParam(r, "id")
+        noteID, err := strconv.Atoi(id)
+        if err != nil {
+            http.Error(w, "Invalid note ID", http.StatusBadRequest)
+            return
+        }
+
+        var note models.Note
+        if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
+            http.Error(w, err.Error(), http.StatusBadRequest)
+            return
+        }
+
+        _, err = pool.Exec(context.Background(), "UPDATE notes SET title=$1, content=$2 WHERE id=$3", note.Title, note.Content, noteID)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    }
+}
+
+func DeleteNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        id := chi.URLParam(r, "id")
+        noteID, err := strconv.Atoi(id)
+        if err != nil {
+            http.Error(w, "Invalid note ID", http.StatusBadRequest)
+            return
+        }
+
+        _, err = pool.Exec(context.Background(), "DELETE FROM notes WHERE id=$1", noteID)
+        if err != nil {
+            http.Error(w, err.Error(), http.StatusInternalServerError)
+            return
+        }
+
+        w.WriteHeader(http.StatusOK)
+    }
+}
+```
+
+### Step 10: Run Migrations
+Run the migrations using Goose:
+```sh
+goose -dir ./migrations postgres $DATABASE_URL up
+```
+
+### Step 11: Run the Application
+Finally, run your application:
+```sh
+go run main.go
+```
+
+This setup provides a basic REST API with user authentication and CRUD operations for notes using Chi, Pgx, and Goose for migrations.
