@@ -4,14 +4,13 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/httplog/v2"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/joho/godotenv"
+	"github.com/opchaves/tudo/internal/config"
 	"github.com/opchaves/tudo/internal/db"
 	"github.com/opchaves/tudo/internal/handlers"
 )
@@ -19,31 +18,30 @@ import (
 var tokenAuth *jwtauth.JWTAuth
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	databaseURL := os.Getenv("DATABASE_URL")
-	pool, err := db.Connect(databaseURL)
+	pool, err := db.Connect(config.DatabaseURL)
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer pool.Close()
 
-	tokenAuth = jwtauth.New("HS256", []byte("your_secret_key"), nil)
+	tokenAuth = jwtauth.New("HS256", []byte(config.JwtSecret), nil)
 
 	r := chi.NewRouter()
 
+	logLevel := slog.LevelDebug
+	if config.IsProduction {
+		logLevel = slog.LevelInfo
+	}
+
 	logger := httplog.NewLogger("tudo", httplog.Options{
-		JSON:            false,
-		LogLevel:        slog.LevelDebug,
-		Concise:         !false,
-		RequestHeaders:  !false,
+		JSON:            config.IsProduction,
+		LogLevel:        logLevel,
+		Concise:         !config.IsProduction,
+		RequestHeaders:  !config.IsProduction,
 		QuietDownRoutes: []string{"/ping"},
 		QuietDownPeriod: 10 * time.Second,
 		Tags: map[string]string{
-			"env": string("dev"),
+			"env": config.Env,
 		},
 	})
 

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-chi/jwtauth/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/opchaves/tudo/internal/config"
 	"github.com/opchaves/tudo/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -61,7 +62,7 @@ func Login(pool *pgxpool.Pool, tokenAuth *jwtauth.JWTAuth) http.HandlerFunc {
 		_, tokenString, err := tokenAuth.Encode(map[string]interface{}{
 			"email":   dbUser.Email,
 			"user_id": dbUser.ID,
-			"exp":     time.Now().Add(24 * time.Hour).Unix(),
+			"exp":     time.Now().Add(config.JwtExpiry).Unix(),
 		})
 		if err != nil {
 			http.Error(w, "Failed to create token", http.StatusInternalServerError)
