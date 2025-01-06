@@ -1,21 +1,20 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/jwtauth/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opchaves/tudo/internal/config"
 	"github.com/opchaves/tudo/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
 
-func SignUp(pool *pgxpool.Pool) http.HandlerFunc {
+func SignUp(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var user models.User
+		aLog := logCtx(r)
+		var user models.UsersInsertParams
+
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -29,26 +28,33 @@ func SignUp(pool *pgxpool.Pool) http.HandlerFunc {
 		}
 		user.Password = string(hashedPassword)
 
-		_, err = pool.Exec(context.Background(), "INSERT INTO users (name, email, password) VALUES ($1, $2, $3)", user.Name, user.Email, user.Password)
+		_, err = c.Q.UsersInsert(r.Context(), user)
 		if err != nil {
+			aLog.Warn("Failed to insert user", "err", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+
+		aLog.Info("User created", "email", user.Email)
 
 		w.WriteHeader(http.StatusCreated)
 	}
 }
 
-func Login(pool *pgxpool.Pool, tokenAuth *jwtauth.JWTAuth) http.HandlerFunc {
+type LoginRequest struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+func Login(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var user models.User
+		var user LoginRequest
 		if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		var dbUser models.User
-		err := pool.QueryRow(context.Background(), "SELECT id, name, email, password FROM users WHERE email=$1", user.Email).Scan(&dbUser.ID, &dbUser.Name, &dbUser.Email, &dbUser.Password)
+		dbUser, err := c.Q.UsersFindByEmail(r.Context(), user.Email)
 		if err != nil {
 			http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 			return
@@ -59,7 +65,7 @@ func Login(pool *pgxpool.Pool, tokenAuth *jwtauth.JWTAuth) http.HandlerFunc {
 			return
 		}
 
-		_, tokenString, err := tokenAuth.Encode(map[string]interface{}{
+		_, tokenString, err := c.JWT.Encode(map[string]interface{}{
 			"email":   dbUser.Email,
 			"user_id": dbUser.ID,
 			"exp":     time.Now().Add(config.JwtExpiry).Unix(),
@@ -70,7 +76,11 @@ func Login(pool *pgxpool.Pool, tokenAuth *jwtauth.JWTAuth) http.HandlerFunc {
 		}
 
 		response := map[string]interface{}{
-			"user":  dbUser,
+			"user": map[string]interface{}{
+				"id":    dbUser.ID,
+				"name":  dbUser.Name,
+				"email": dbUser.Email,
+			},
 			"token": tokenString,
 		}
 

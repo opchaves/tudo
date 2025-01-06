@@ -1,59 +1,46 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opchaves/tudo/internal/models"
 )
 
-func getUserID(r *http.Request) int {
+func getUserID(r *http.Request) int32 {
 	_, claims, _ := jwtauth.FromContext(r.Context())
-	return int(claims["user_id"].(float64))
+	return int32(claims["user_id"].(float64))
 }
 
-func GetNotes(pool *pgxpool.Pool) http.HandlerFunc {
+func GetNotes(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
-		rows, err := pool.Query(context.Background(), "SELECT id, user_id, title, content, created_at FROM notes WHERE user_id=$1", userID)
+		notes, err := c.Q.NotesGetByUser(r.Context(), userID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
-		}
-		defer rows.Close()
-
-		var notes []models.Note
-		for rows.Next() {
-			var note models.Note
-			if err := rows.Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-			notes = append(notes, note)
 		}
 
 		json.NewEncoder(w).Encode(notes)
 	}
 }
 
-func CreateNote(pool *pgxpool.Pool) http.HandlerFunc {
+func CreateNote(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
-		var note models.Note
+		var note models.NotesInsertParams
 		if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		note.UserID = userID
 
-		_, err := pool.Exec(context.Background(), "INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3)", note.UserID, note.Title, note.Content)
+		_, err := c.Q.NotesInsert(r.Context(), note)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -63,7 +50,7 @@ func CreateNote(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func GetNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+func GetNoteByID(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
@@ -74,8 +61,7 @@ func GetNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		var note models.Note
-		err = pool.QueryRow(context.Background(), "SELECT id, user_id, title, content, created_at FROM notes WHERE id=$1 AND user_id=$2", noteID, userID).Scan(&note.ID, &note.UserID, &note.Title, &note.Content, &note.CreatedAt)
+		note, err := c.Q.NotesGetByID(r.Context(), models.NotesGetByIDParams{ID: int32(noteID), UserID: userID})
 		if err != nil {
 			http.Error(w, "Note not found", http.StatusNotFound)
 			return
@@ -85,7 +71,7 @@ func GetNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func UpdateNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+func UpdateNoteByID(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
@@ -96,13 +82,16 @@ func UpdateNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		var note models.Note
-		if err := json.NewDecoder(r.Body).Decode(&note); err != nil {
+		var note models.NotesUpdateParams
+		if err = json.NewDecoder(r.Body).Decode(&note); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 
-		_, err = pool.Exec(context.Background(), "UPDATE notes SET title=$1, content=$2 WHERE id=$3 AND user_id=$4", note.Title, note.Content, noteID, userID)
+		note.ID = int32(noteID)
+		note.UserID = userID
+
+		_, err = c.Q.NotesUpdate(r.Context(), note)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -112,7 +101,7 @@ func UpdateNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func DeleteNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
+func DeleteNoteByID(c *Container) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		userID := getUserID(r)
 
@@ -123,7 +112,7 @@ func DeleteNoteByID(pool *pgxpool.Pool) http.HandlerFunc {
 			return
 		}
 
-		_, err = pool.Exec(context.Background(), "DELETE FROM notes WHERE id=$1 AND user_id=$2", noteID, userID)
+		err = c.Q.NotesDelete(r.Context(), models.NotesDeleteParams{ID: int32(noteID), UserID: userID})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
