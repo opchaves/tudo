@@ -40,7 +40,7 @@ func main() {
 	r.Use(httplog.RequestLogger(logger))
 	r.Use(middleware.Recoverer)
 
-	r.Route("/users", func(r chi.Router) {
+	r.Route("/auth", func(r chi.Router) {
 		r.Post("/signup", handlers.SignUp(container))
 		r.Post("/login", handlers.Login(container))
 	})

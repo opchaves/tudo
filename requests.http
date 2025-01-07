@@ -1,11 +1,11 @@
 # Sign Up
-http POST http://localhost:8080/users/signup \
+http POST http://localhost:8080/auth/signup \
     name="John Doe" \
     email="john.doe@example.com" \
     password="password123"
 
 # Login
-http POST http://localhost:8080/users/login \
+http POST http://localhost:8080/auth/login \
     email="john.doe@example.com" \
     password="password123"
 
