@@ -63,7 +63,6 @@ func toInt(envVar string, defaultVal string) int {
 func getEnv(name, defaultValue string) string {
 	doOnce.Do(func() {
 		path := filepath.Join(basepath, "../../.env")
-		println(">>> .env path", path)
 		readEnvFile(path)
 	})
 
