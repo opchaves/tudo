@@ -3,6 +3,7 @@ package handlers
 import (
 	"log/slog"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/httplog/v2"
 	"github.com/go-chi/jwtauth/v5"
@@ -49,4 +50,14 @@ func aLog(r *http.Request) *slog.Logger {
 func getUserID(r *http.Request) int32 {
 	_, claims, _ := jwtauth.FromContext(r.Context())
 	return int32(claims["user_id"].(float64))
+}
+
+func NewToken(user *models.User, jwt *jwtauth.JWTAuth) (string, error) {
+	_, tokenString, err := jwt.Encode(map[string]interface{}{
+		"email":   user.Email,
+		"user_id": user.ID,
+		"exp":     time.Now().Add(config.JwtExpiry).Unix(),
+	})
+
+	return tokenString, err
 }
