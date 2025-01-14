@@ -46,21 +46,21 @@ func (s *Server) MountHandlers() {
 		logLevel = slog.LevelInfo
 	}
 
-	// TODO: maybe no logger when testing
-	logger := httplog.NewLogger("tudo", httplog.Options{
-		JSON:            config.IsProduction,
-		LogLevel:        logLevel,
-		Concise:         !config.IsProduction,
-		RequestHeaders:  !config.IsProduction,
-		QuietDownRoutes: []string{"/ping"},
-		QuietDownPeriod: 10 * time.Second,
-		Tags: map[string]string{
-			"env": config.Env,
-		},
-	})
-
 	s.Router.Use(middleware.RequestID)
-	s.Router.Use(httplog.RequestLogger(logger))
+	if config.Env != "test" {
+		logger := httplog.NewLogger("tudo", httplog.Options{
+			JSON:            config.IsProduction,
+			LogLevel:        logLevel,
+			Concise:         !config.IsProduction,
+			RequestHeaders:  !config.IsProduction,
+			QuietDownRoutes: []string{"/ping"},
+			QuietDownPeriod: 10 * time.Second,
+			Tags: map[string]string{
+				"env": config.Env,
+			},
+		})
+		s.Router.Use(httplog.RequestLogger(logger))
+	}
 	s.Router.Use(middleware.Recoverer)
 
 	handler := handlers.NewHandler(s.DB)

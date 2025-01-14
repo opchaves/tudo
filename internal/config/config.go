@@ -28,8 +28,8 @@ const (
 )
 
 var (
-	Name    = getEnv("TUDO_NAME", "tudo")
-	Env     = getEnv("TUDO_ENV", "development")
+	Name    = getEnv("APP_NAME", "tudo")
+	Env     = getEnv("APP_ENV", "development")
 	Host    = getEnv("HOST", "0.0.0.0")
 	Port    = getEnv("PORT", "8080")
 	Origins = getEnv("ORIGINS", "")

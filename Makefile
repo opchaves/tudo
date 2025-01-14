@@ -33,3 +33,6 @@ install-tools:
 
 sqlc:
 	@sqlc generate
+
+test-api:
+	@APP_ENV=test go test -v ./internal/handlers
