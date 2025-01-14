@@ -2,11 +2,8 @@ package testutils
 
 import (
 	"context"
-	"database/sql"
 	"log"
-	"time"
 
-	"github.com/go-chi/jwtauth/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opchaves/tudo/internal/config"
@@ -16,10 +13,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-var (
-	Pool *pgxpool.Pool
-	DB   *sql.DB
-)
+var Pool *pgxpool.Pool
 
 // @see https://stackoverflow.com/a/77581618
 
@@ -50,9 +44,9 @@ func SetupDB() {
 		log.Fatalf("Failed to set goose dialect")
 	}
 
-	DB = stdlib.OpenDBFromPool(Pool)
+	db := stdlib.OpenDBFromPool(Pool)
 
-	if err := goose.Up(DB, "."); err != nil {
+	if err := goose.Up(db, "."); err != nil {
 		log.Fatalf("Failed to run migrations: %v", err)
 	}
 }
@@ -79,17 +73,4 @@ func CreateUser(email, password string, q *models.Queries) *models.User {
 	}
 
 	return user
-}
-
-func CreateToken(user *models.User, jwt *jwtauth.JWTAuth) string {
-	_, tokenString, err := jwt.Encode(map[string]interface{}{
-		"email":   user.Email,
-		"user_id": user.ID,
-		"exp":     time.Now().Add(config.JwtExpiry).Unix(),
-	})
-	if err != nil {
-		log.Fatalf("Failed to create token: %v", err)
-	}
-
-	return tokenString
 }
