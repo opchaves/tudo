@@ -36,3 +36,7 @@ sqlc:
 
 test-api:
 	@APP_ENV=test go test -v ./internal/handlers
+
+start:
+	@go build -o tmp/tudo .
+	@APP_ENV=production ./tmp/tudo
