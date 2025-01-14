@@ -12,11 +12,11 @@ func TestGetNotes(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		req.Header.Set("Authorization", "Bearer " + authToken)
+		req.Header.Set("Authorization", "Bearer "+authToken)
 
 		rr := execRequest(req, aServer)
 
-		AssertStatus(t, rr.Code, http.StatusOK)
+		assertStatus(t, rr.Code, http.StatusOK)
 
 		expected := "[]\n"
 		if rr.Body.String() != expected {
@@ -32,6 +32,6 @@ func TestGetNotes(t *testing.T) {
 
 		rr := execRequest(req, aServer)
 
-		AssertStatus(t, rr.Code, http.StatusUnauthorized)
+		assertStatus(t, rr.Code, http.StatusUnauthorized)
 	})
 }
