@@ -14,8 +14,8 @@ DELETE FROM notes WHERE id=$1 AND user_id=$2
 `
 
 type NotesDeleteParams struct {
-	ID     int32
-	UserID int32
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
 }
 
 func (q *Queries) NotesDelete(ctx context.Context, arg NotesDeleteParams) error {
@@ -28,8 +28,8 @@ SELECT id, user_id, title, content, created_at FROM notes WHERE id=$1 AND user_i
 `
 
 type NotesGetByIDParams struct {
-	ID     int32
-	UserID int32
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
 }
 
 func (q *Queries) NotesGetByID(ctx context.Context, arg NotesGetByIDParams) (*Note, error) {
@@ -80,9 +80,9 @@ INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3) RETURNING id, us
 `
 
 type NotesInsertParams struct {
-	UserID  int32
-	Title   string
-	Content string
+	UserID  int32  `json:"user_id"`
+	Title   string `json:"title"`
+	Content string `json:"content"`
 }
 
 func (q *Queries) NotesInsert(ctx context.Context, arg NotesInsertParams) (*Note, error) {
@@ -103,10 +103,10 @@ UPDATE notes SET title=$1, content=$2 WHERE id=$3 AND user_id=$4 RETURNING id, u
 `
 
 type NotesUpdateParams struct {
-	Title   string
-	Content string
-	ID      int32
-	UserID  int32
+	Title   string `json:"title"`
+	Content string `json:"content"`
+	ID      int32  `json:"id"`
+	UserID  int32  `json:"user_id"`
 }
 
 func (q *Queries) NotesUpdate(ctx context.Context, arg NotesUpdateParams) (*Note, error) {

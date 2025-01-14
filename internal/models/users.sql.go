@@ -30,9 +30,9 @@ INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name
 `
 
 type UsersInsertParams struct {
-	Name     string
-	Email    string
-	Password string
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (q *Queries) UsersInsert(ctx context.Context, arg UsersInsertParams) (*User, error) {

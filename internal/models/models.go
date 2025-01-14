@@ -9,16 +9,16 @@ import (
 )
 
 type Note struct {
-	ID        int32
-	UserID    int32
-	Title     string
-	Content   string
-	CreatedAt pgtype.Timestamp
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	Title     string           `json:"title"`
+	Content   string           `json:"content"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 type User struct {
-	ID       int32
-	Name     string
-	Email    string
-	Password string
+	ID       int32  `json:"id"`
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }

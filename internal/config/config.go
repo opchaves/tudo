@@ -3,11 +3,18 @@ package config
 import (
 	"log"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"time"
 
 	"github.com/joho/godotenv"
+)
+
+var (
+    _, b, _, _ = runtime.Caller(0)
+    basepath   = filepath.Dir(b)
 )
 
 var doOnce sync.Once
@@ -30,6 +37,7 @@ var (
 	IsProduction = Env == "production"
 	IsLocal      = Env == "development" || Env == "test"
 	DatabaseURL  = getEnv("DATABASE_URL", "postgres://dev:password@localhost:5432/devdb?sslmode=disable")
+	TestDatabaseURL  = getEnv("TEST_DATABASE_URL", "postgres://dev:password@localhost:5432/testdb?sslmode=disable")
 
 	JwtSecret        = getEnv("JWT_SECRET", "superSecret")
 	JwtExpiry        = toDuration("JWT_EXPIRY", "1h")
@@ -54,7 +62,9 @@ func toInt(envVar string, defaultVal string) int {
 
 func getEnv(name, defaultValue string) string {
 	doOnce.Do(func() {
-		readEnvFile(".env")
+		path := filepath.Join(basepath, "../../.env")
+		println(">>> .env path", path)
+		readEnvFile(path)
 	})
 
 	if value := os.Getenv(name); value != "" {
@@ -65,7 +75,7 @@ func getEnv(name, defaultValue string) string {
 }
 
 func readEnvFile(filename string) {
-	env := os.Getenv("TUDO_ENV")
+	env := os.Getenv("APP_ENV")
 	if env != "production" {
 		err := godotenv.Load(filename)
 		if err != nil {

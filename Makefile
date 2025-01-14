@@ -20,6 +20,9 @@ migrate-create:
 psql-dev:
 	psql $(DATABASE_URL)
 
+psql-test:
+	psql $(TEST_DATABASE_URL)
+
 db-dump:
 	@docker compose exec db pg_dump -U dev --schema-only -d devdb > internal/db/schema.sql
 
