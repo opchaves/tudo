@@ -1,13 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
-	"time"
 
 	"github.com/go-chi/render"
-	"github.com/opchaves/tudo/internal/config"
 	"github.com/opchaves/tudo/internal/models"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -22,9 +19,7 @@ func (o *SignUpRequest) Bind(r *http.Request) error {
 		return errors.New("missing required fields")
 	}
 
-	err := validate.Struct(o)
-
-	return err
+	return validate.Struct(o)
 }
 
 type SignUpResponse struct {
@@ -32,7 +27,6 @@ type SignUpResponse struct {
 }
 
 func (s *SignUpResponse) Render(w http.ResponseWriter, r *http.Request) error {
-	// Pre-processing before a response is marshalled and sent across the wire
 	return nil
 }
 
@@ -71,43 +65,48 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+type LoginResponse struct {
+	*models.User
+	Password bool   `json:"password,omitempty"`
+	Token    string `json:"token"`
+}
+
+func (o *LoginRequest) Bind(r *http.Request) error {
+	if o == nil {
+		return errors.New("missing required fields")
+	}
+
+	return validate.Struct(o)
+}
+
+func (s *LoginResponse) Render(w http.ResponseWriter, r *http.Request) error {
+	return nil
+}
+
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
-	var user LoginRequest
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	input := &LoginRequest{}
+	if err := render.Bind(r, input); err != nil {
+		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
 
-	dbUser, err := h.Q.UsersFindByEmail(r.Context(), user.Email)
+	user, err := h.Q.UsersFindByEmail(r.Context(), input.Email)
 	if err != nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+		render.Render(w, r, ErrText("Email already taken"))
 		return
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(dbUser.Password), []byte(user.Password)); err != nil {
-		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
+	if err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.Password)); err != nil {
+		render.Render(w, r, ErrText("Invalid email or password"))
 		return
 	}
 
-	_, tokenString, err := h.JWT.Encode(map[string]interface{}{
-		"email":   dbUser.Email,
-		"user_id": dbUser.ID,
-		"exp":     time.Now().Add(config.JwtExpiry).Unix(),
-	})
+	token, err := NewToken(user, h.JWT)
 	if err != nil {
-		http.Error(w, "Failed to create token", http.StatusInternalServerError)
+		render.Render(w, r, ErrInternalServer(err))
 		return
 	}
 
-	response := map[string]interface{}{
-		"user": map[string]interface{}{
-			"id":    dbUser.ID,
-			"name":  dbUser.Name,
-			"email": dbUser.Email,
-		},
-		"token": tokenString,
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	render.Status(r, http.StatusOK)
+	render.Render(w, r, &LoginResponse{User: user, Token: token})
 }

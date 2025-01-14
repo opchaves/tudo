@@ -3,6 +3,7 @@ package handlers_test
 import (
 	"bytes"
 	"encoding/json"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -15,20 +16,30 @@ import (
 )
 
 var (
-	testContainer *handlers.Container
-	authUser      *models.User
-	authToken     string
-	aServer       *server.Server
+	authUser  *models.User
+	authToken string
+	aServer   *server.Server
+)
+
+var (
+	userPassword = "password123"
+	userEmail    = "auth@test.com"
 )
 
 func TestMain(m *testing.M) {
-	testutils.SetupDB()
-	testContainer = handlers.ContainerWithDB(testutils.Pool)
+	var err error
 
-	authUser = testutils.CreateUser("auth@test.com", "password1", testContainer.Q)
-	authToken = testutils.CreateToken(authUser, testContainer.JWT)
+	testutils.SetupDB()
 
 	aServer = server.CreateNewServer(testutils.Pool)
+
+	authUser = testutils.CreateUser(userEmail, userPassword, aServer.Q)
+
+	authToken, err = handlers.NewToken(authUser, aServer.JWT)
+	if err != nil {
+		log.Fatalf("Failed to create auth token: %v", err)
+	}
+
 	aServer.MountHandlers()
 
 	code := m.Run()
@@ -98,6 +109,36 @@ func TestSignUp(t *testing.T) {
 
 		req = MakePostRequest(t, "/auth/signup", input)
 		rr = execRequest(req, aServer)
+
+		AssertStatus(t, rr.Code, http.StatusBadRequest)
+	})
+}
+
+func TestLogin(t *testing.T) {
+	t.Run("successful login", func(t *testing.T) {
+		input := handlers.LoginRequest{Email: authUser.Email, Password: userPassword}
+		req := MakePostRequest(t, "/auth/login", input)
+
+		rr := execRequest(req, aServer)
+
+		AssertStatus(t, rr.Code, http.StatusOK)
+
+		var body map[string]interface{}
+		err := json.Unmarshal(rr.Body.Bytes(), &body)
+		if err != nil {
+			t.Fatalf("Failed to unmarshal response: %v", err)
+		}
+
+		if _, ok := body["token"]; !ok {
+			t.Fatalf("Response does not contain token")
+		}
+	})
+
+	t.Run("should fail with invalid password", func(t *testing.T) {
+		input := handlers.LoginRequest{Email: authUser.Email, Password: "_invalid_"}
+		req := MakePostRequest(t, "/auth/login", input)
+
+		rr := execRequest(req, aServer)
 
 		AssertStatus(t, rr.Code, http.StatusBadRequest)
 	})
