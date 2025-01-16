@@ -78,6 +78,7 @@ type User struct {
 	Email        string           `json:"email"`
 	Password     *string          `json:"password"`
 	Avatar       *string          `json:"avatar"`
+	Verified     bool             `json:"verified"`
 	Role         string           `json:"role"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`

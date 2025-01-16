@@ -9,8 +9,26 @@ import (
 	"context"
 )
 
+const tokensVerificationInsert = `-- name: TokensVerificationInsert :exec
+INSERT INTO user_tokens (
+  token, tokey_type, user_id
+) VALUES (
+  $1, 'verification', $2
+)
+`
+
+type TokensVerificationInsertParams struct {
+	Token  string `json:"token"`
+	UserID int32  `json:"user_id"`
+}
+
+func (q *Queries) TokensVerificationInsert(ctx context.Context, arg TokensVerificationInsertParams) error {
+	_, err := q.db.Exec(ctx, tokensVerificationInsert, arg.Token, arg.UserID)
+	return err
+}
+
 const usersFindByEmail = `-- name: UsersFindByEmail :one
-SELECT id, uid, first_name, last_name, email, password, avatar, role, created_at, updated_at, deleted_at, last_active_at FROM users WHERE email = $1
+SELECT id, uid, first_name, last_name, email, password, avatar, verified, role, created_at, updated_at, deleted_at, last_active_at FROM users WHERE email = $1
 `
 
 func (q *Queries) UsersFindByEmail(ctx context.Context, email string) (*User, error) {
@@ -24,6 +42,7 @@ func (q *Queries) UsersFindByEmail(ctx context.Context, email string) (*User, er
 		&i.Email,
 		&i.Password,
 		&i.Avatar,
+		&i.Verified,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -34,7 +53,7 @@ func (q *Queries) UsersFindByEmail(ctx context.Context, email string) (*User, er
 }
 
 const usersFindByUid = `-- name: UsersFindByUid :one
-SELECT id, uid, first_name, last_name, email, password, avatar, role, created_at, updated_at, deleted_at, last_active_at FROM users WHERE uid = $1
+SELECT id, uid, first_name, last_name, email, password, avatar, verified, role, created_at, updated_at, deleted_at, last_active_at FROM users WHERE uid = $1
 `
 
 func (q *Queries) UsersFindByUid(ctx context.Context, uid string) (*User, error) {
@@ -48,6 +67,7 @@ func (q *Queries) UsersFindByUid(ctx context.Context, uid string) (*User, error)
 		&i.Email,
 		&i.Password,
 		&i.Avatar,
+		&i.Verified,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -62,7 +82,7 @@ INSERT INTO users (
   uid, first_name, last_name, email, password, avatar, role
 ) VALUES (
   $1, $2, $3, $4, $5, $6, $7
-) RETURNING id, uid, first_name, last_name, email, password, avatar, role, created_at, updated_at, deleted_at, last_active_at
+) RETURNING id, uid, first_name, last_name, email, password, avatar, verified, role, created_at, updated_at, deleted_at, last_active_at
 `
 
 type UsersInsertParams struct {
@@ -94,6 +114,7 @@ func (q *Queries) UsersInsert(ctx context.Context, arg UsersInsertParams) (*User
 		&i.Email,
 		&i.Password,
 		&i.Avatar,
+		&i.Verified,
 		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,

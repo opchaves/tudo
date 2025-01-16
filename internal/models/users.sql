@@ -17,3 +17,10 @@ SELECT * FROM users WHERE email = $1;
 -- name: UsersFindByUid :one
 SELECT * FROM users WHERE uid = $1;
 
+-- name: TokensVerificationInsert :exec
+INSERT INTO user_tokens (
+  token, tokey_type, user_id
+) VALUES (
+  $1, 'verification', $2
+);
+
