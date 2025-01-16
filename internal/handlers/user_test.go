@@ -10,7 +10,11 @@ import (
 
 func TestSignUp(t *testing.T) {
 	t.Run("successful signup", func(t *testing.T) {
-		input := handlers.SignUpRequest{Email: "test@example.com", Password: "pass123*"}
+		input := handlers.SignUpRequest{
+			Email:     "test@example.com",
+			Password:  "pass123*",
+			FirstName: "Test",
+		}
 		req := makePostRequest(t, "/auth/signup", input)
 
 		rr := execRequest(req, aServer)
@@ -35,7 +39,11 @@ func TestSignUp(t *testing.T) {
 	})
 
 	t.Run("duplicate email", func(t *testing.T) {
-		input := handlers.SignUpRequest{Email: "duplicate@example.com", Password: "password123"}
+		input := handlers.SignUpRequest{
+			Email: "duplicate@example.com",
+			Password: "password123",
+			FirstName: "Duplicate",
+		}
 		req := makePostRequest(t, "/auth/signup", input)
 
 		rr := execRequest(req, aServer)
