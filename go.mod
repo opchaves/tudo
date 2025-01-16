@@ -37,6 +37,7 @@ require (
 	github.com/lestrrat-go/iter v1.0.2 // indirect
 	github.com/lestrrat-go/jwx/v2 v2.1.3 // indirect
 	github.com/lestrrat-go/option v1.0.1 // indirect
+	github.com/matoous/go-nanoid/v2 v2.1.0
 	github.com/pressly/goose/v3 v3.24.1
 	github.com/segmentio/asm v1.2.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
