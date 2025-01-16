@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS users(
   "email" VARCHAR NOT NULL,
   "password" VARCHAR,
   "avatar" VARCHAR,
+  "verified" BOOLEAN NOT NULL DEFAULT false,
   "role" VARCHAR NOT NULL DEFAULT 'user' CHECK (role IN ('admin', 'user')),
   "created_at" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
   "updated_at" TIMESTAMP WITHOUT TIME ZONE NOT NULL DEFAULT now(),
