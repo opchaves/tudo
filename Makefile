@@ -61,3 +61,8 @@ dc-stop:
 .PHONY: dc-down
 dc-down:
 	@docker compose down --remove-orphans --volumes
+
+.PHONY: db-reset
+db-reset:
+	@make dc-down
+	@make dc-up
