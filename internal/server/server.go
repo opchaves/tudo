@@ -70,13 +70,13 @@ func (s *Server) MountHandlers() {
 		r.Post("/login", handler.Login)
 	})
 
-	s.Router.Route("/api/notes", func(r chi.Router) {
-		r.Use(jwtauth.Verifier(s.JWT))
-		r.Use(jwtauth.Authenticator(s.JWT))
-		r.Get("/", handler.GetNotes)
-		r.Post("/", handler.CreateNote)
-		r.Get("/{id}", handler.GetNoteByID)
-		r.Put("/{id}", handler.UpdateNoteByID)
-		r.Delete("/{id}", handler.DeleteNoteByID)
-	})
+	// s.Router.Route("/api/notes", func(r chi.Router) {
+	// 	r.Use(jwtauth.Verifier(s.JWT))
+	// 	r.Use(jwtauth.Authenticator(s.JWT))
+	// 	r.Get("/", handler.GetNotes)
+	// 	r.Post("/", handler.CreateNote)
+	// 	r.Get("/{id}", handler.GetNoteByID)
+	// 	r.Put("/{id}", handler.UpdateNoteByID)
+	// 	r.Delete("/{id}", handler.DeleteNoteByID)
+	// })
 }

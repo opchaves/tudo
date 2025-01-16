@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/opchaves/tudo/internal/config"
 	"github.com/opchaves/tudo/internal/models"
+	"github.com/opchaves/tudo/internal/utils"
 	"github.com/opchaves/tudo/migrations"
 	"github.com/pressly/goose/v3"
 	"golang.org/x/crypto/bcrypt"
@@ -57,14 +58,22 @@ func TeardownDB() {
 }
 
 func CreateUser(email, password string, q *models.Queries) *models.User {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
 	}
 
+	hashedPassword := string(hash)
+	uid := utils.NewIDShort()
+	lastName := "Test"
+
 	userParams := models.UsersInsertParams{
-		Email:    email,
-		Password: string(hashedPassword),
+		Email:     email,
+		Password:  &hashedPassword,
+		Uid:       uid,
+		FirstName: "Paulo",
+		LastName:  &lastName,
+		Role:      "user",
 	}
 
 	user, err := q.UsersInsert(context.Background(), userParams)

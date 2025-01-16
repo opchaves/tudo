@@ -7,6 +7,8 @@ package models
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const notesDelete = `-- name: NotesDelete :exec
@@ -32,9 +34,17 @@ type NotesGetByIDParams struct {
 	UserID int32 `json:"user_id"`
 }
 
-func (q *Queries) NotesGetByID(ctx context.Context, arg NotesGetByIDParams) (*Note, error) {
+type NotesGetByIDRow struct {
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	Title     string           `json:"title"`
+	Content   string           `json:"content"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) NotesGetByID(ctx context.Context, arg NotesGetByIDParams) (*NotesGetByIDRow, error) {
 	row := q.db.QueryRow(ctx, notesGetByID, arg.ID, arg.UserID)
-	var i Note
+	var i NotesGetByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -49,15 +59,23 @@ const notesGetByUser = `-- name: NotesGetByUser :many
 SELECT id, user_id, title, content, created_at FROM notes WHERE user_id=$1
 `
 
-func (q *Queries) NotesGetByUser(ctx context.Context, userID int32) ([]*Note, error) {
+type NotesGetByUserRow struct {
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	Title     string           `json:"title"`
+	Content   string           `json:"content"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) NotesGetByUser(ctx context.Context, userID int32) ([]*NotesGetByUserRow, error) {
 	rows, err := q.db.Query(ctx, notesGetByUser, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []*Note
+	var items []*NotesGetByUserRow
 	for rows.Next() {
-		var i Note
+		var i NotesGetByUserRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.UserID,
@@ -76,7 +94,7 @@ func (q *Queries) NotesGetByUser(ctx context.Context, userID int32) ([]*Note, er
 }
 
 const notesInsert = `-- name: NotesInsert :one
-INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3) RETURNING id, user_id, title, content, created_at
+INSERT INTO notes (user_id, title, content) VALUES ($1, $2, $3) RETURNING id, uid, title, content, user_id, created_at, updated_at
 `
 
 type NotesInsertParams struct {
@@ -90,16 +108,18 @@ func (q *Queries) NotesInsert(ctx context.Context, arg NotesInsertParams) (*Note
 	var i Note
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
+		&i.Uid,
 		&i.Title,
 		&i.Content,
+		&i.UserID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }
 
 const notesUpdate = `-- name: NotesUpdate :one
-UPDATE notes SET title=$1, content=$2 WHERE id=$3 AND user_id=$4 RETURNING id, user_id, title, content, created_at
+UPDATE notes SET title=$1, content=$2 WHERE id=$3 AND user_id=$4 RETURNING id, uid, title, content, user_id, created_at, updated_at
 `
 
 type NotesUpdateParams struct {
@@ -119,10 +139,12 @@ func (q *Queries) NotesUpdate(ctx context.Context, arg NotesUpdateParams) (*Note
 	var i Note
 	err := row.Scan(
 		&i.ID,
-		&i.UserID,
+		&i.Uid,
 		&i.Title,
 		&i.Content,
+		&i.UserID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return &i, err
 }

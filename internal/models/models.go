@@ -8,17 +8,114 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type Account struct {
+	ID          int32            `json:"id"`
+	WorkspaceID int32            `json:"workspace_id"`
+	Name        string           `json:"name"`
+	Balance     pgtype.Numeric   `json:"balance"`
+	Color       *string          `json:"color"`
+	Icon        *string          `json:"icon"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type Category struct {
+	ID          int32            `json:"id"`
+	WorkspaceID int32            `json:"workspace_id"`
+	Name        string           `json:"name"`
+	Description *string          `json:"description"`
+	Type        string           `json:"type"`
+	Color       *string          `json:"color"`
+	Icon        *string          `json:"icon"`
+	CreatedBy   int32            `json:"created_by"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+}
+
+type Invitation struct {
+	Token         string           `json:"token"`
+	Permission    string           `json:"permission"`
+	WorkspaceID   int32            `json:"workspace_id"`
+	InvitedUserID int32            `json:"invited_user_id"`
+	InvitedBy     int32            `json:"invited_by"`
+	CreatedAt     pgtype.Timestamp `json:"created_at"`
+	DeletedAt     pgtype.Timestamp `json:"deleted_at"`
+}
+
 type Note struct {
 	ID        int32            `json:"id"`
-	UserID    int32            `json:"user_id"`
+	Uid       string           `json:"uid"`
 	Title     string           `json:"title"`
 	Content   string           `json:"content"`
+	UserID    int32            `json:"user_id"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+type Transaction struct {
+	ID          int32            `json:"id"`
+	Uid         string           `json:"uid"`
+	WorkspaceID int32            `json:"workspace_id"`
+	CategoryID  int32            `json:"category_id"`
+	AccountID   int32            `json:"account_id"`
+	Title       string           `json:"title"`
+	Note        *string          `json:"note"`
+	TxnDate     pgtype.Timestamp `json:"txn_date"`
+	Price       pgtype.Numeric   `json:"price"`
+	Type        string           `json:"type"`
+	Paid        bool             `json:"paid"`
+	CreatedBy   int32            `json:"created_by"`
+	UpdatedBy   *int32           `json:"updated_by"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
 
 type User struct {
-	ID       int32  `json:"id"`
-	Name     string `json:"name"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	ID           int32            `json:"id"`
+	Uid          string           `json:"uid"`
+	FirstName    string           `json:"first_name"`
+	LastName     *string          `json:"last_name"`
+	Email        string           `json:"email"`
+	Password     *string          `json:"password"`
+	Avatar       *string          `json:"avatar"`
+	Role         string           `json:"role"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	DeletedAt    pgtype.Timestamp `json:"deleted_at"`
+	LastActiveAt pgtype.Timestamp `json:"last_active_at"`
+}
+
+type UserOauthProvider struct {
+	ID        int32            `json:"id"`
+	UserID    int32            `json:"user_id"`
+	Provider  string           `json:"provider"`
+	OauthUid  string           `json:"oauth_uid"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+type UserToken struct {
+	Token     string           `json:"token"`
+	TokeyType string           `json:"tokey_type"`
+	UserID    int32            `json:"user_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	DeletedAt pgtype.Timestamp `json:"deleted_at"`
+}
+
+type Workspace struct {
+	ID        int32            `json:"id"`
+	Uid       string           `json:"uid"`
+	Name      string           `json:"name"`
+	OwnerID   int32            `json:"owner_id"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+}
+
+type WorkspaceMember struct {
+	WorkspaceID int32            `json:"workspace_id"`
+	UserID      int32            `json:"user_id"`
+	Permission  string           `json:"permission"`
+	Active      bool             `json:"active"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 }
