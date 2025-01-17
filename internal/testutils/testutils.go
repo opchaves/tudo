@@ -16,8 +16,6 @@ import (
 
 var Pool *pgxpool.Pool
 
-// @see https://stackoverflow.com/a/77581618
-
 func SetupDB() {
 	var err error
 	Pool, err = pgxpool.New(context.Background(), config.TestDatabaseURL)
@@ -57,7 +55,7 @@ func TeardownDB() {
 	Pool.Close()
 }
 
-func CreateUser(email, password string, q *models.Queries) *models.User {
+func CreateUser(email, password string, verified bool, q *models.Queries) *models.User {
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatalf("Failed to hash password: %v", err)
@@ -71,9 +69,10 @@ func CreateUser(email, password string, q *models.Queries) *models.User {
 		Email:     email,
 		Password:  &hashedPassword,
 		Uid:       uid,
-		FirstName: "Paulo",
+		FirstName: "Test",
 		LastName:  &lastName,
 		Role:      "user",
+		Verified:  verified,
 	}
 
 	user, err := q.UsersInsert(context.Background(), userParams)

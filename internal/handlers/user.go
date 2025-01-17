@@ -12,7 +12,7 @@ import (
 
 type SignUpRequest struct {
 	Email     string `json:"email" validate:"required,email"`
-	Password  string `json:"password" validate:"required,min=8"`
+	Password  string `json:"password" validate:"required,min=10"`
 	FirstName string `json:"first_name" validate:"required"`
 	LastName  string `json:"last_name"`
 }
@@ -47,8 +47,13 @@ func (h *Handler) SignUp(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hashedPassword := string(hash)
+	taken, _ := h.Q.UserWithEmailExists(r.Context(), data.Email)
+	if taken {
+		render.Render(w, r, ErrText("Email already taken"))
+		return
+	}
 
+	hashedPassword := string(hash)
 	newUser := models.UsersInsertParams{}
 	newUser.Email = data.Email
 	newUser.Password = &hashedPassword
@@ -57,13 +62,34 @@ func (h *Handler) SignUp(w http.ResponseWriter, r *http.Request) {
 	newUser.LastName = &data.LastName
 	newUser.Role = "user"
 
-	user, err := h.Q.UsersInsert(r.Context(), newUser)
+	dbTransaction, err := h.DB.Begin(r.Context())
+	if err != nil {
+		render.Render(w, r, ErrInternalServer(err))
+		return
+	}
+
+	qTx := h.Q.WithTx(dbTransaction)
+	defer dbTransaction.Rollback(r.Context())
+
+	user, err := qTx.UsersInsert(r.Context(), newUser)
 	if err != nil {
 		render.Render(w, r, ErrInvalidRequest(err))
 		return
 	}
 
 	aLog(r).Info("User created", "email", user.Email)
+
+	verificationToken := models.TokensVerificationInsertParams{
+		Token:  utils.NewID(),
+		UserID: user.ID,
+	}
+
+	if err = qTx.TokensVerificationInsert(r.Context(), verificationToken); err != nil {
+		render.Render(w, r, ErrInternalServer(err))
+		return
+	}
+
+	_ = dbTransaction.Commit(r.Context())
 
 	render.Status(r, http.StatusCreated)
 	render.Render(w, r, &SignUpResponse{UserID: user.Uid})
@@ -100,13 +126,18 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := h.Q.UsersFindByEmail(r.Context(), input.Email)
-	if err != nil {
-		render.Render(w, r, ErrText("Email already taken"))
+	user, _ := h.Q.UsersFindByEmail(r.Context(), input.Email)
+	if user == nil {
+		render.Render(w, r, ErrText("Invalid email or password"))
 		return
 	}
 
-	if err = bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(input.Password)); err != nil {
+	if !user.Verified {
+		render.Render(w, r, ErrText("User not verified yet. Please, verify first."))
+		return
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(*user.Password), []byte(input.Password)); err != nil {
 		render.Render(w, r, ErrText("Invalid email or password"))
 		return
 	}

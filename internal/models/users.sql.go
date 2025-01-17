@@ -27,6 +27,17 @@ func (q *Queries) TokensVerificationInsert(ctx context.Context, arg TokensVerifi
 	return err
 }
 
+const userWithEmailExists = `-- name: UserWithEmailExists :one
+SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)
+`
+
+func (q *Queries) UserWithEmailExists(ctx context.Context, email string) (bool, error) {
+	row := q.db.QueryRow(ctx, userWithEmailExists, email)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const usersFindByEmail = `-- name: UsersFindByEmail :one
 SELECT id, uid, first_name, last_name, email, password, avatar, verified, role, created_at, updated_at, deleted_at, last_active_at FROM users WHERE email = $1
 `
@@ -79,9 +90,9 @@ func (q *Queries) UsersFindByUid(ctx context.Context, uid string) (*User, error)
 
 const usersInsert = `-- name: UsersInsert :one
 INSERT INTO users (
-  uid, first_name, last_name, email, password, avatar, role
+  uid, first_name, last_name, email, password, avatar, role, verified
 ) VALUES (
-  $1, $2, $3, $4, $5, $6, $7
+  $1, $2, $3, $4, $5, $6, $7, $8
 ) RETURNING id, uid, first_name, last_name, email, password, avatar, verified, role, created_at, updated_at, deleted_at, last_active_at
 `
 
@@ -93,6 +104,7 @@ type UsersInsertParams struct {
 	Password  *string `json:"password"`
 	Avatar    *string `json:"avatar"`
 	Role      string  `json:"role"`
+	Verified  bool    `json:"verified"`
 }
 
 func (q *Queries) UsersInsert(ctx context.Context, arg UsersInsertParams) (*User, error) {
@@ -104,6 +116,7 @@ func (q *Queries) UsersInsert(ctx context.Context, arg UsersInsertParams) (*User
 		arg.Password,
 		arg.Avatar,
 		arg.Role,
+		arg.Verified,
 	)
 	var i User
 	err := row.Scan(

@@ -33,7 +33,7 @@ func TestMain(m *testing.M) {
 
 	aServer = server.CreateNewServer(testutils.Pool)
 
-	authUser = testutils.CreateUser(userEmail, userPassword, aServer.Q)
+	authUser = testutils.CreateUser(userEmail, userPassword, true, aServer.Q)
 
 	authToken, err = handlers.NewToken(authUser, aServer.JWT)
 	if err != nil {
@@ -71,4 +71,13 @@ func assertStatus(t *testing.T, got, want int) {
 	if got != want {
 		t.Errorf("handler returned wrong status code: got %v want %v", got, want)
 	}
+}
+
+func parseBody(t *testing.T, body []byte) map[string]interface{} {
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		t.Fatalf("Failed to parse response body: %v", err)
+	}
+
+	return data
 }
